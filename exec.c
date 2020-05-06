@@ -18,6 +18,7 @@ exec(char *path, char **argv)
   struct proghdr ph;
   pde_t *pgdir, *oldpgdir;
   struct proc *curproc = myproc();
+  set_proc_ticket(curproc->pid, 50);
 
   begin_op();
 
@@ -99,6 +100,7 @@ exec(char *path, char **argv)
   curproc->sz = sz;
   curproc->tf->eip = elf.entry;  // main
   curproc->tf->esp = sp;
+  curproc->queue_num = LOTTERY;
   switchuvm(curproc);
   freevm(oldpgdir);
   return 0;

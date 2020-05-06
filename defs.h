@@ -10,6 +10,15 @@ struct sleeplock;
 struct stat;
 struct superblock;
 
+typedef int Bool;
+
+#define TRUE 1
+#define FALSE 0
+#define LOTTERY 1
+#define ROUND_ROBIN 2
+#define HRRN 3
+#define NOTHING 0
+
 // bio.c
 void            binit(void);
 struct buf*     bread(uint, uint);
@@ -120,6 +129,9 @@ void            userinit(void);
 int             wait(void);
 void            wakeup(void*);
 void            yield(void);
+int 			set_proc_queue(int, int);
+int 			set_proc_ticket(int, int);
+int 			print_processes(void);
 
 // swtch.S
 void            swtch(struct context**, struct context*);

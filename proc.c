@@ -38,10 +38,10 @@ struct cpu*
 mycpu(void)
 {
   int apicid, i;
-  
+
   if(readeflags()&FL_IF)
     panic("mycpu called with interrupts enabled\n");
-  
+
   apicid = lapicid();
   // APIC IDs are not guaranteed to be contiguous. Maybe we should have
   // a reverse map, or reserve a register to store &cpus[i].
@@ -88,6 +88,10 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
+  p->queue_num = LOTTERY;
+
+  p->cycles = 1;
+  p->ticket = 50;
 
   release(&ptable.lock);
 
@@ -124,7 +128,7 @@ userinit(void)
   extern char _binary_initcode_start[], _binary_initcode_size[];
 
   p = allocproc();
-  
+
   initproc = p;
   if((p->pgdir = setupkvm()) == 0)
     panic("userinit: out of memory?");
@@ -199,6 +203,8 @@ fork(void)
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
+  np->queue_num = LOTTERY;
+  np->ticket = 10;
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -275,7 +281,7 @@ wait(void)
   struct proc *p;
   int havekids, pid;
   struct proc *curproc = myproc();
-  
+
   acquire(&ptable.lock);
   for(;;){
     // Scan through table looking for exited children.
@@ -319,13 +325,124 @@ wait(void)
 //  - swtch to start running that process
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
+
+struct proc*
+get_lottery_sched_proc(void)
+{
+  struct proc *p;
+  uint total_tickets = 0;
+  uint cur_tickets = 0;
+  uint goal_ticket;
+  uint random;
+  Bool has_proc = FALSE;
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state != RUNNABLE || p->queue_num != LOTTERY)
+      continue;
+
+    total_tickets += p->ticket;
+    has_proc = TRUE;
+  }
+
+  acquire(&tickslock);
+  random = ticks;
+  release(&tickslock);
+
+  goal_ticket = (random) % total_tickets;
+
+  if(has_proc){
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->state != RUNNABLE || p->queue_num != LOTTERY)
+        continue;
+
+      cur_tickets += p->ticket;
+
+      if(goal_ticket < cur_tickets){
+        return p;
+      }
+    }
+  }
+  return NOTHING;
+}
+
+struct proc*
+get_round_robin_sched_proc(void)
+{
+  struct proc *p;
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state != RUNNABLE || p->queue_num != ROUND_ROBIN)
+      continue;
+
+    /// TODO ADD ROUND ROBIN CODE
+  }
+  return NOTHING;
+}
+
+struct proc*
+get_hrrn_sched_proc(void)
+{
+  struct proc *p;
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state != RUNNABLE || p->queue_num != HRRN)
+      continue;
+
+    /// TODO ADD HRRN CODE
+  }
+  return NOTHING;
+}
+
+void
+scheduler2(void)
+{
+  struct proc *p;
+  struct cpu *c = mycpu();
+  c->proc = 0;
+
+  for(;;){
+    // Enable interrupts on this processor.
+    sti();
+
+    acquire(&ptable.lock);
+
+    p = get_lottery_sched_proc();
+
+    if(p == NOTHING)
+      p = get_round_robin_sched_proc();
+
+    if(p == NOTHING)
+      p = get_hrrn_sched_proc();
+
+    // Switch to chosen process.  It is the process's job
+    // to release ptable.lock and then reacquire it
+    // before jumping back to us.
+    if(p != NOTHING){
+      c->proc = p;
+      switchuvm(p);
+      p->state = RUNNING;
+      p->cycles++;
+
+      swtch(&(c->scheduler), p->context);
+      switchkvm();
+
+      // Process is done running for now.
+      // It should have changed its p->state before coming back.
+      c->proc = 0;
+    }
+
+    release(&ptable.lock);
+
+  }
+}
+
 void
 scheduler(void)
 {
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
-  
+
   for(;;){
     // Enable interrupts on this processor.
     sti();
@@ -354,7 +471,6 @@ scheduler(void)
 
   }
 }
-
 // Enter scheduler.  Must hold only ptable.lock
 // and have changed proc->state. Saves and restores
 // intena because intena is a property of this
@@ -418,7 +534,7 @@ void
 sleep(void *chan, struct spinlock *lk)
 {
   struct proc *p = myproc();
-  
+
   if(p == 0)
     panic("sleep");
 
@@ -531,4 +647,66 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+int
+set_proc_queue(int pid, int dest_queue)
+{
+  struct proc *p;
+
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->pid == pid){
+      p->queue_num = dest_queue;
+      release(&ptable.lock);
+      return 0;
+    }
+  }
+  release(&ptable.lock);
+  return -1;
+}
+
+int
+set_proc_ticket(int pid, int value)
+{
+  struct proc *p;
+
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->pid == pid){
+      p->ticket = value;
+      release(&ptable.lock);
+      return 0;
+    }
+  }
+  release(&ptable.lock);
+  return -1;
+}
+
+int
+print_processes(void)
+{
+  static char *states[] = {
+  [UNUSED]    "UNUSED",
+  [EMBRYO]    "EMBRYO",
+  [SLEEPING]  "SLEEPING",
+  [RUNNABLE]  "RUNNABLE",
+  [RUNNING]   "RUNNING",
+  [ZOMBIE]    "ZOMBIE"
+  };
+
+  struct proc *p;
+  char *state;
+
+  acquire(&ptable.lock);
+
+  cprintf("name     pid  state     queue_num  ticket  cycles     HRRN    \n");
+  cprintf("--------------------------------------------------------------\n");
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    state = states[p->state];
+    cprintf("%s %d %s %d %d %d %f", p->name, p->pid, state, p->queue_num, p->ticket, p->cycles, p->hrrn);
+  }
+  release(&ptable.lock);
+  return 0;
 }
