@@ -1,3 +1,4 @@
+#define AGING_CYCLE 2500
 
 // Per-CPU state
 struct cpu {
@@ -51,9 +52,10 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
   int queue_num;               // Process Queue Number
-  uint ticket;                  // Process Ticket
+  uint ticket;                 // Process Ticket
   int cycles;                  // Process Cycles
   float hrrn;                  // Process HRRN Ratio
+  int waiting_time;            // Process waited time to be called
 };
 
 // Process memory is laid out contiguously, low addresses first:

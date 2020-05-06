@@ -92,6 +92,7 @@ found:
 
   p->cycles = 1;
   p->ticket = 50;
+  p->waiting_time = 0;
 
   release(&ptable.lock);
 
@@ -205,6 +206,7 @@ fork(void)
   *np->tf = *curproc->tf;
   np->queue_num = LOTTERY;
   np->ticket = 10;
+  np->waiting_time = 0;
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -394,6 +396,36 @@ get_hrrn_sched_proc(void)
 }
 
 void
+update_waiting_times()
+{
+  struct proc *p;
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state != RUNNABLE)
+      continue;
+
+    p->waiting_time++;
+  }
+}
+
+void
+check_aging()
+{
+  struct proc *p;
+
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state != RUNNABLE)
+      continue;
+
+    if(p->waiting_time > AGING_CYCLE)
+    {
+        p->queue_num = LOTTERY;
+        p->waiting_time = 0;
+    }
+  }
+}
+
+void
 scheduler2(void)
 {
   struct proc *p;
@@ -422,6 +454,9 @@ scheduler2(void)
       switchuvm(p);
       p->state = RUNNING;
       p->cycles++;
+      update_waiting_times();
+      p->waiting_time = 0;
+      check_aging();
 
       swtch(&(c->scheduler), p->context);
       switchkvm();
