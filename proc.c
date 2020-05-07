@@ -436,7 +436,7 @@ go_to_end_of_queue(struct proc *target)
         if (p != target)
             continue;
         else
-            break
+            break;
     }
     struct proc *temp2 = p;
     for (temp = temp2 + 1; temp < &ptable.proc[NPROC]; temp++)
@@ -787,12 +787,18 @@ print_processes(void)
 
   acquire(&ptable.lock);
 
-  cprintf("name     pid  state     queue_num  ticket  cycles     HRRN    \n");
-  cprintf("--------------------------------------------------------------\n");
+  cprintf("name\t\tpid\tstate\tqueue_num\tticket\tcycles\tHRRN\n");
+  cprintf("-----------------------------------------------------------------------------\n");
 
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    if (p->pid == 0)
+      continue;
     state = states[p->state];
-    cprintf("%s %d %s %d %d %d %f", p->name, p->pid, state, p->queue_num, p->ticket, p->cycles, p->hrrn);
+ 
+    if (strlen(p->name) >= 8)
+      cprintf("%s\t%d\t%s\t%d\t%d\t%d\n", p->name, p->pid, state, p->queue_num, p->ticket, p->cycles);
+    else
+      cprintf("%s\t\t%d\t%s\t%d\t%d\t%d\n", p->name, p->pid, state, p->queue_num, p->ticket, p->cycles);
   }
   release(&ptable.lock);
   return 0;

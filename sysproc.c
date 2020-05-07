@@ -117,6 +117,5 @@ sys_set_proc_ticket(void)
 int
 sys_print_processes(void)
 {
-
   return print_processes();
 }
