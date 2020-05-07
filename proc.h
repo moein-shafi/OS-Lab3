@@ -1,4 +1,5 @@
 #define AGING_CYCLE 2500
+#define TIME_QUANTUM 2
 
 // Per-CPU state
 struct cpu {

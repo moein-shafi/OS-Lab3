@@ -420,9 +420,31 @@ check_aging()
     if(p->waiting_time > AGING_CYCLE)
     {
         p->queue_num = LOTTERY;
+        p->ticket = 10;
         p->waiting_time = 0;
     }
   }
+}
+
+void
+go_to_end_of_queue(struct proc *target)
+{
+    struct proc *temp;
+    struct proc *p;
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+    {
+        if (p != target)
+            continue;
+        else
+            break
+    }
+    struct proc *temp2 = p;
+    for (temp = temp2 + 1; temp < &ptable.proc[NPROC]; temp++)
+    {
+        p = temp;
+        p++;
+    }
+    p = target;
 }
 
 void
@@ -449,21 +471,51 @@ scheduler2(void)
     // Switch to chosen process.  It is the process's job
     // to release ptable.lock and then reacquire it
     // before jumping back to us.
-    if(p != NOTHING){
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
-      p->cycles++;
-      update_waiting_times();
-      p->waiting_time = 0;
-      check_aging();
+    if(p != NOTHING)
+    {
+        int count = 0;
+        if(p->queue_num == ROUND_ROBIN)
+        {
+            //Each iteration of this loop is a tick!
+            //If p->state goes to something other than runnable by end of this
+            //loop then that means proc did not complete its tick
+            while (p->state == RUNNABLE && count < TIME_QUANTUM)
+            {
+                c->proc = p;
+                switchuvm(p);
+                p->state = RUNNING;
+                p->cycles++;
+                update_waiting_times();
+                p->waiting_time = 0;
+                check_aging();
+                swtch(&(c->scheduler), p->context);
+                switchkvm();
+                c->proc = 0;
+                count++;
+            }
 
-      swtch(&(c->scheduler), p->context);
-      switchkvm();
+            //Handles case where process exceeds TIME_QUANTUM ticks
+            if (p->state == RUNNABLE && count >= TIME_QUANTUM)
+                go_to_end_of_queue(p);
 
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      c->proc = 0;
+        }
+        else
+        {
+            c->proc = p;
+            switchuvm(p);
+            p->state = RUNNING;
+            p->cycles++;
+            update_waiting_times();
+            p->waiting_time = 0;
+            check_aging();
+
+            swtch(&(c->scheduler), p->context);
+            switchkvm();
+
+            // Process is done running for now.
+            // It should have changed its p->state before coming back.
+            c->proc = 0;
+        }
     }
 
     release(&ptable.lock);
