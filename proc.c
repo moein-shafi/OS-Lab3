@@ -93,6 +93,9 @@ found:
   p->cycles = 1;
   p->ticket = 50;
   p->waiting_time = 0;
+  acquire(&tickslock);
+  p->arrival_time = ticks;
+  release(&tickslock);
 
   release(&ptable.lock);
 
@@ -384,15 +387,33 @@ get_round_robin_sched_proc(void)
 struct proc*
 get_hrrn_sched_proc(void)
 {
-  struct proc *p;
+  struct proc *current_proc;
+  struct proc *max_ratio_proc = 0;
+  float max_ratio = 0.0;
 
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if(p->state != RUNNABLE || p->queue_num != HRRN)
+  for(current_proc = ptable.proc; current_proc < &ptable.proc[NPROC]; ++current_proc){
+    if(current_proc->state != RUNNABLE)
+      continue;
+    if (current_proc->pid == 1)
+      return current_proc;
+    if (current_proc->queue_num != HRRN)
       continue;
 
-    /// TODO ADD HRRN CODE
+    acquire(&tickslock);
+    uint current_time = ticks;
+    release(&tickslock);
+    current_proc->waiting_time = current_time - current_proc->arrival_time;
+    float current_ratio = current_proc->waiting_time / current_proc->cycles;
+    if (current_ratio > max_ratio)
+    {
+      max_ratio = current_ratio;
+      max_ratio_proc = current_proc;
+    }
   }
-  return NOTHING;
+  if (max_ratio_proc != 0)
+    max_ratio_proc->cycles += 0.1;
+
+  return max_ratio_proc;
 }
 
 void
