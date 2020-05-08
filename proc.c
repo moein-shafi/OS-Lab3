@@ -808,8 +808,8 @@ print_processes(void)
 
   acquire(&ptable.lock);
 
-  cprintf("name\t\tpid\tstate\tqueue_num\tticket\tcycles\tHRRN\n");
-  cprintf("-----------------------------------------------------------------------------\n");
+  cprintf("name\t\tpid\tstate\t\tqueue_num\tticket\tcreation time\tcycles\n");
+  cprintf("-----------------------------------------------------------------------------------------\n");
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
     if (p->pid == 0)
@@ -817,9 +817,11 @@ print_processes(void)
     state = states[p->state];
  
     if (strlen(p->name) >= 8)
-      cprintf("%s\t%d\t%s\t%d\t%d\t%d\n", p->name, p->pid, state, p->queue_num, p->ticket, p->cycles);
+      cprintf("%s\t%d\t%s\t%d\t\t%d\t%d\t\t%d\n", p->name, p->pid, state, p->queue_num, (int)p->ticket,
+        (int)p->arrival_time, p->cycles);
     else
-      cprintf("%s\t\t%d\t%s\t%d\t%d\t%d\n", p->name, p->pid, state, p->queue_num, p->ticket, p->cycles);
+      cprintf("%s\t\t%d\t%s\t%d\t\t%d\t%d\t\t%d\n", p->name, p->pid, state, p->queue_num, (int)p->ticket,
+        (int)p->arrival_time, p->cycles);
   }
   release(&ptable.lock);
   return 0;
