@@ -808,7 +808,7 @@ print_processes(void)
 
   acquire(&ptable.lock);
 
-  cprintf("name\t\tpid\tstate\t\tqueue_num\tticket\tcreation time\tcycles\n");
+  cprintf("name\t\tpid\tstate\t\tqueue_num\tticket\tarraival time\tcycles\n");
   cprintf("-----------------------------------------------------------------------------------------\n");
 
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
