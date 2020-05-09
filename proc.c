@@ -211,6 +211,10 @@ fork(void)
   np->ticket = 10;
   np->waiting_time = 0;
 
+  acquire(&tickslock);
+  np->arrival_time = ticks;
+  release(&tickslock);
+
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
 
@@ -374,13 +378,26 @@ struct proc*
 get_round_robin_sched_proc(void)
 {
   struct proc *p;
-
+  struct proc *target_proc;
+  Bool has_proc = FALSE;
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->state != RUNNABLE || p->queue_num != ROUND_ROBIN)
-      continue;
-
-    /// TODO ADD ROUND ROBIN CODE
+        continue;
+    if(has_proc)
+    {
+        if(p->arrival_time < target_proc->arrival_time)
+          target_proc = p;
+    }
+    else
+    {
+        target_proc = p;
+        has_proc = TRUE;
+    }
   }
+
+  if(has_proc)
+    return target_proc;
+
   return NOTHING;
 }
 
@@ -444,27 +461,6 @@ check_aging()
 }
 
 void
-go_to_end_of_queue(struct proc *target)
-{
-    struct proc *temp;
-    struct proc *p;
-    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    {
-        if (p != target)
-            continue;
-        else
-            break;
-    }
-    struct proc *temp2 = p;
-    for (temp = temp2 + 1; temp < &ptable.proc[NPROC]; temp++)
-    {
-        p = temp;
-        p++;
-    }
-    p = target;
-}
-
-void
 scheduler2(void)
 {
   struct proc *p;
@@ -490,48 +486,24 @@ scheduler2(void)
     // before jumping back to us.
     if(p != NOTHING)
     {
-        int count = 0;
-        if(p->queue_num == ROUND_ROBIN)
+        c->proc = p;
+        switchuvm(p);
+        p->state = RUNNING;
+        p->cycles++;
+        update_waiting_times();
+        p->waiting_time = 0;
+        check_aging();
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
+
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+        if (p->state == RUNNABLE && p->queue_num == ROUND_ROBIN)
         {
-            //Each iteration of this loop is a tick!
-            //If p->state goes to something other than runnable by end of this
-            //loop then that means proc did not complete its tick
-            while (p->state == RUNNABLE && count < TIME_QUANTUM)
-            {
-                c->proc = p;
-                switchuvm(p);
-                p->state = RUNNING;
-                p->cycles++;
-                update_waiting_times();
-                p->waiting_time = 0;
-                check_aging();
-                swtch(&(c->scheduler), p->context);
-                switchkvm();
-                c->proc = 0;
-                count++;
-            }
-
-            //Handles case where process exceeds TIME_QUANTUM ticks
-            if (p->state == RUNNABLE && count >= TIME_QUANTUM)
-                go_to_end_of_queue(p);
-
-        }
-        else
-        {
-            c->proc = p;
-            switchuvm(p);
-            p->state = RUNNING;
-            p->cycles++;
-            update_waiting_times();
-            p->waiting_time = 0;
-            check_aging();
-
-            swtch(&(c->scheduler), p->context);
-            switchkvm();
-
-            // Process is done running for now.
-            // It should have changed its p->state before coming back.
-            c->proc = 0;
+            acquire(&tickslock);
+            p->arrival_time = ticks;
+            release(&tickslock);
         }
     }
 
