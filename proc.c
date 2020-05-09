@@ -392,18 +392,14 @@ get_hrrn_sched_proc(void)
   float max_ratio = 0.0;
 
   for(current_proc = ptable.proc; current_proc < &ptable.proc[NPROC]; ++current_proc){
-    if(current_proc->state != RUNNABLE)
-      continue;
-    if (current_proc->pid == 1)
-      return current_proc;
-    if (current_proc->queue_num != HRRN)
+    if(current_proc->state != RUNNABLE || current_proc->queue_num != HRRN)
       continue;
 
     acquire(&tickslock);
     uint current_time = ticks;
     release(&tickslock);
-    current_proc->waiting_time = current_time - current_proc->arrival_time;
-    float current_ratio = current_proc->waiting_time / current_proc->cycles;
+    uint waiting_time = current_time - current_proc->arrival_time;
+    float current_ratio = waiting_time / current_proc->cycles;
     if (current_ratio > max_ratio)
     {
       max_ratio = current_ratio;
