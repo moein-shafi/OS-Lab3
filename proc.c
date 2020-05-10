@@ -394,22 +394,30 @@ get_round_robin_sched_proc(void)
   return NOTHING;
 }
 
+double calculate_hrrn(int arrival_time, int cycles)
+{
+    acquire(&tickslock);
+    int current_time = ticks;
+    release(&tickslock);
+    int waiting_time = current_time - arrival_time;
+    // cprintf("waiting time = %d, cycles = %d\n", waiting_time, cycles);
+    double hrrn = waiting_time / cycles;
+    return hrrn;
+}
+
 struct proc*
 get_hrrn_sched_proc(void)
 {
   struct proc *current_proc;
   struct proc *max_ratio_proc = 0;
-  float max_ratio = 0.0;
+  double max_ratio = 0.0;
 
   for(current_proc = ptable.proc; current_proc < &ptable.proc[NPROC]; ++current_proc){
     if(current_proc->state != RUNNABLE || current_proc->queue_num != HRRN)
       continue;
 
-    acquire(&tickslock);
-    uint current_time = ticks;
-    release(&tickslock);
-    uint waiting_time = current_time - current_proc->arrival_time;
-    float current_ratio = waiting_time / current_proc->cycles;
+    double current_ratio = calculate_hrrn(current_proc->arrival_time, current_proc->cycles);
+
     if (current_ratio > max_ratio)
     {
       max_ratio = current_ratio;
@@ -717,6 +725,46 @@ set_proc_ticket(int pid, int value)
   return -1;
 }
 
+void print_spaces(int remaining)
+{
+  int i;
+  if (remaining <= 0)
+    return;
+  for (i = 0; i < remaining; i++)
+    cprintf(" ");
+}
+
+int
+count_num_of_digits(int number)
+{
+  int count = 0;
+  if (number == 0)
+    count++;
+  else
+  {
+    while(number != 0)
+    {
+      count++;
+      number /= 10;
+    }
+  }
+  return count;
+}
+
+int seprate_floating_part(double num)
+{
+  // cprintf("Ali = %d\n", (int)num);
+  num *= 10;
+  // cprintf("mmd\n");
+  int fpart = ((int)num % 10) * 100;
+  num *= 10;
+  fpart += ((int)num % 10) * 10;
+  num *= 10;
+  fpart += (int)num % 10;
+  // cprintf("fpart = %d\n", fpart);
+  return fpart;
+}
+
 int
 print_processes(void)
 {
@@ -729,25 +777,82 @@ print_processes(void)
   [ZOMBIE]    "ZOMBIE"
   };
 
+  enum titles {NAME, PID, STATE, QUEUE_NUM, TICKET, CYCLES, HRRN_TITLE};
+  static const int table_columns = 7;
+
+  static const char *titles_str[] = {
+    [NAME]        "name",
+    [PID]         "pid",
+    [STATE]       "state",
+    [QUEUE_NUM]   "queue_num",
+    [TICKET]      "ticket",
+    [CYCLES]      "cycles",
+    [HRRN_TITLE]  "HRRN"
+  };
+  int min_space_between_words = 4;
+  int max_column_lens[] = {
+    [NAME]        15 + min_space_between_words,
+    [PID]         strlen(titles_str[PID]) + min_space_between_words,
+    [STATE]       8 + min_space_between_words,
+    [QUEUE_NUM]   strlen(titles_str[QUEUE_NUM]) + min_space_between_words,
+    [TICKET]      strlen(titles_str[TICKET]) + min_space_between_words,
+    [CYCLES]      strlen(titles_str[CYCLES]) + min_space_between_words,
+    [HRRN_TITLE]  5 + min_space_between_words
+  };
+
+  int i;
+  for (i = 0; i < table_columns; i++)
+  {
+    cprintf("%s", titles_str[i]);
+    print_spaces(max_column_lens[i] - strlen(titles_str[i]));
+  }
+  cprintf("\n---------------------------------------------------------------------------------\n");
+
   struct proc *p;
   char *state;
+  int ticket_len;
 
   acquire(&ptable.lock);
-
-  cprintf("name\t\tpid\tstate\t\tqueue_num\tticket\tarraival time\tcycles\n");
-  cprintf("-----------------------------------------------------------------------------------------\n");
-
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
     if (p->pid == 0)
       continue;
     state = states[p->state];
- 
-    if (strlen(p->name) >= 8)
-      cprintf("%s\t%d\t%s\t%d\t\t%d\t%d\t\t%d\n", p->name, p->pid, state, p->queue_num, (int)p->ticket,
-        (int)p->arrival_time, p->cycles);
+    cprintf("%s", p->name);
+    print_spaces(max_column_lens[NAME] - strlen(p->name));
+    cprintf("%d", p->pid);
+    print_spaces(max_column_lens[PID] - count_num_of_digits(p->pid));
+    cprintf("%s", state);
+    print_spaces(max_column_lens[STATE] - strlen(state));
+    cprintf("%d", p->queue_num);
+    print_spaces(max_column_lens[QUEUE_NUM] - count_num_of_digits(p->queue_num));
+    if (p->queue_num != LOTTERY)
+    {
+      cprintf("--");
+      ticket_len = 2;
+    }
     else
-      cprintf("%s\t\t%d\t%s\t%d\t\t%d\t%d\t\t%d\n", p->name, p->pid, state, p->queue_num, (int)p->ticket,
-        (int)p->arrival_time, p->cycles);
+    {
+      cprintf("%d", p->ticket);
+      ticket_len = count_num_of_digits(p->ticket);
+    }    
+    print_spaces(max_column_lens[TICKET] - ticket_len);
+    
+    cprintf("%d", p->cycles);
+    print_spaces(max_column_lens[CYCLES] - count_num_of_digits(p->cycles));
+    
+    // double hrrn_ratio = calculate_hrrn(p->arrival_time, p->cycles);
+    double hrrn_ratio = 10.3;
+    // cprintf("Ali\n");
+    // cprintf("Ali %d\n", hrrn_ratio);
+    // int ipart = (int) hrrn_ratio;
+    // cprintf("Ali\n");
+    // cprintf("Ali %d\n", ipart);
+    cprintf("mmd %d\n", seprate_floating_part(hrrn_ratio));
+    // int fpart = 
+    // ftoa(hrrn_ratio, hrrn_str, 3);
+    // cprintf("%s", hrrn_str);
+    // print_spaces(max_column_lens[HRRN_TITLE] - strlen(hrrn_str));
+    cprintf("\n");
   }
   release(&ptable.lock);
   return 0;
