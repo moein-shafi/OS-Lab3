@@ -91,7 +91,7 @@ found:
   p->queue_num = LOTTERY;
 
   p->cycles = 1;
-  p->ticket = 50;
+  p->ticket = 10;
   p->waiting_time = 0;
   acquire(&tickslock);
   p->arrival_time = ticks;
@@ -207,13 +207,6 @@ fork(void)
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
-  np->queue_num = LOTTERY;
-  np->ticket = 10;
-  np->waiting_time = 0;
-
-  acquire(&tickslock);
-  np->arrival_time = ticks;
-  release(&tickslock);
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
