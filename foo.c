@@ -27,12 +27,18 @@ int main(int argc, char const *argv[])
 					break;
 
 				case 6:
-					set_proc_queue(pid, 2);
+					set_proc_queue(pid, 1);
+					set_proc_ticket(pid, 24);
 					break;
 
 				case 8:
 					set_proc_queue(pid, 1);
 					set_proc_ticket(pid, 40);
+					break;
+				case (NUMBER_OF_PROCESSES-1):
+					print_processes();
+					break;
+				default:
 					break;
 			}
 			pid = fork();
@@ -48,8 +54,7 @@ int main(int argc, char const *argv[])
         int z = 1;
         for(int j = 0; j < 10000000.0; j+=1)
             z += (j + 1);
-		printf (2, "", z);
-		printf(2, "process with pid %d is finished!\n", i);
+		printf (2, "", z);	
 	}
 	else
 	{
