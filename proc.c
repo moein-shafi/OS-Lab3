@@ -88,7 +88,7 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
-  p->queue_num = LOTTERY;
+  p->queue_num = HRRN;
 
   p->cycles = 1;
   p->ticket = 10;
@@ -346,9 +346,9 @@ get_lottery_sched_proc(void)
     has_proc = TRUE;
   }
 
-  acquire(&tickslock);
-  random = ticks;
-  release(&tickslock);
+  //acquire(&tickslock);
+  //random = ticks;
+  //release(&tickslock);
 
   if(has_proc){
     random = ticks;
@@ -396,9 +396,9 @@ get_round_robin_sched_proc(void)
 
 double calculate_hrrn(int arrival_time, int cycles)
 {
-    acquire(&tickslock);
+    //acquire(&tickslock);
     int current_time = ticks;
-    release(&tickslock);
+    //release(&tickslock);
     int waiting_time = current_time - arrival_time;
     // cprintf("waiting time = %d, cycles = %d\n", waiting_time, cycles);
     double hrrn = waiting_time / cycles;
@@ -454,9 +454,7 @@ check_aging()
 
     if(p->waiting_time > AGING_CYCLE)
     {
-        p->queue_num = LOTTERY;
-        p->ticket = 10;
-        p->waiting_time = 0;
+        set_proc_queue(p->pid, LOTTERY);
     }
   }
 }
@@ -502,9 +500,9 @@ scheduler(void)
         c->proc = 0;
         if (p->state == RUNNABLE && p->queue_num == ROUND_ROBIN)
         {
-            acquire(&tickslock);
+            //acquire(&tickslock);
             p->arrival_time = ticks;
-            release(&tickslock);
+            //release(&tickslock);
         }
     }
 
@@ -700,6 +698,7 @@ set_proc_queue(int pid, int dest_queue)
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->pid == pid){
       p->queue_num = dest_queue;
+      p->waiting_time = 0;
       release(&ptable.lock);
       return 0;
     }
