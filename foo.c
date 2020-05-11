@@ -3,7 +3,7 @@
 #include "user.h"
 #include "fcntl.h"
 
-#define NUMBER_OF_PROCESSES 20
+#define NUMBER_OF_PROCESSES 10
 #define ONE 1
 
 int main(int argc, char const *argv[])
@@ -17,23 +17,25 @@ int main(int argc, char const *argv[])
 		{
 			switch(i)
 			{
-				case 4:
+				case 2:
 					set_proc_queue(pid, 1);
 					set_proc_ticket(pid, 16);
 					break;
 
-				case 8:
+				case 4:
 					set_proc_queue(pid, 2);
 					break;
 
-				case 12:
-					set_proc_queue(pid, 1);
-					set_proc_ticket(pid, 24);
+				case 6:
+					set_proc_queue(pid, 2);
+					break;
 
-				case 16:
+				case 8:
 					set_proc_queue(pid, 1);
 					set_proc_ticket(pid, 40);
+					break;
 			}
+			pid = fork();
 		}
 	}
 
