@@ -839,18 +839,12 @@ print_processes(void)
     cprintf("%d", p->cycles);
     print_spaces(max_column_lens[CYCLES] - count_num_of_digits(p->cycles));
     
-    // double hrrn_ratio = calculate_hrrn(p->arrival_time, p->cycles);
-    double hrrn_ratio = 10.3;
-    // cprintf("Ali\n");
-    // cprintf("Ali %d\n", hrrn_ratio);
-    // int ipart = (int) hrrn_ratio;
-    // cprintf("Ali\n");
-    // cprintf("Ali %d\n", ipart);
-    cprintf("mmd %d\n", seprate_floating_part(hrrn_ratio));
-    // int fpart = 
-    // ftoa(hrrn_ratio, hrrn_str, 3);
-    // cprintf("%s", hrrn_str);
-    // print_spaces(max_column_lens[HRRN_TITLE] - strlen(hrrn_str));
+    double hrrn_ratio = calculate_hrrn(p->arrival_time, p->cycles);
+    // double hrrn_ratio = 10.3254;
+    int ipart = (int)hrrn_ratio;
+    cprintf("%d.\n", ipart);
+    cprintf("%d\n", seprate_floating_part(hrrn_ratio));
+    print_spaces(max_column_lens[HRRN_TITLE] - (3 + count_num_of_digits(ipart)));
     cprintf("\n");
   }
   release(&ptable.lock);
