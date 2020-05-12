@@ -401,7 +401,7 @@ double calculate_hrrn(int arrival_time, int cycles)
     //release(&tickslock);
     int waiting_time = current_time - arrival_time;
     // cprintf("waiting time = %d, cycles = %d\n", waiting_time, cycles);
-    double hrrn = waiting_time / cycles;
+    double hrrn = waiting_time * 1.0 / cycles ;
     return hrrn;
 }
 
