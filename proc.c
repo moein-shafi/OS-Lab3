@@ -783,6 +783,10 @@ void reverse(char* str, int len)
 int intToStr(int x, char str[], int d) 
 { 
     int i = 0; 
+
+    if(x == 0)
+      str[i++] = '0';
+
     while (x) { 
         str[i++] = (x % 10) + '0'; 
         x = x / 10; 
