@@ -884,7 +884,7 @@ print_processes(void)
     float_to_string(p->cycles, cycles_str, CYCLES_PRECISION);
 
     cprintf("%s", cycles_str);
-    print_spaces(max_column_lens[CYCLES] - count_num_of_digits(p->cycles)-1);
+    print_spaces(max_column_lens[CYCLES] - strlen(cycles_str));
     
     double hrrn_ratio = calculate_hrrn(p->arrival_time, p->cycles);
 
