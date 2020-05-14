@@ -54,7 +54,7 @@ struct proc {
   char name[16];               // Process name (debugging)
   int queue_num;               // Process Queue Number
   uint ticket;                 // Process Ticket
-  int cycles;                  // Process Cycles
+  float cycles;                  // Process Cycles
   int arrival_time;           // Process Arraval time
   float hrrn;                  // Process HRRN Ratio
   int waiting_time;            // Process waited time to be called
