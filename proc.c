@@ -424,8 +424,6 @@ get_hrrn_sched_proc(void)
       max_ratio_proc = current_proc;
     }
   }
-  if (max_ratio_proc != 0)
-    max_ratio_proc->cycles += 0.1;
 
   return max_ratio_proc;
 }
@@ -452,9 +450,10 @@ check_aging()
     if(p->state != RUNNABLE)
       continue;
 
-    if(p->waiting_time > AGING_CYCLE)
+    if (p->waiting_time > AGING_CYCLE)
     {
-        set_proc_queue(p->pid, LOTTERY);
+        p->queue_num = LOTTERY;
+        p->waiting_time = 0;
     }
   }
 }
@@ -488,7 +487,7 @@ scheduler(void)
         c->proc = p;
         switchuvm(p);
         p->state = RUNNING;
-        p->cycles++;
+        p->cycles += 0.1;
         update_waiting_times();
         p->waiting_time = 0;
         check_aging();
@@ -881,13 +880,16 @@ print_processes(void)
     }    
     print_spaces(max_column_lens[TICKET] - ticket_len);
     
-    cprintf("%d", p->cycles);
-    print_spaces(max_column_lens[CYCLES] - count_num_of_digits(p->cycles));
+    char cycles_str[30];
+    float_to_string(p->cycles, cycles_str, CYCLES_PRECISION);
+
+    cprintf("%s", cycles_str);
+    print_spaces(max_column_lens[CYCLES] - count_num_of_digits(p->cycles)-1);
     
     double hrrn_ratio = calculate_hrrn(p->arrival_time, p->cycles);
 
     char hrrn_str[30];
-    float_to_string(hrrn_ratio, hrrn_str, PRECISION);
+    float_to_string(hrrn_ratio, hrrn_str, HRRN_PRECISION);
 
     cprintf("%s\n", hrrn_str);
     cprintf("\n");
