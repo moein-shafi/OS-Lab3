@@ -18,7 +18,8 @@ typedef int Bool;
 #define ROUND_ROBIN 2
 #define HRRN 3
 #define NOTHING 0
-#define PRECISION 4
+#define HRRN_PRECISION 4
+#define CYCLES_PRECISION 1
 
 // bio.c
 void            binit(void);
